@@ -2,14 +2,18 @@ import sharp from 'sharp';
 import { checkExt, createNewAssetAt } from '../core/index.js';
 import { compressSharp } from './utils/compressSharp.js';
 import { resolveOptions } from './utils/resolveOptions.js';
+import { generate } from 'gpu-tex-enc';
+import * as cpu from 'cpu-features';
 
 import type { AvifOptions, JpegOptions, PngOptions, WebpOptions } from 'sharp';
 import type { Asset, AssetPipe, PluginOptions } from '../core/index.js';
+import type { OutputOptions } from 'gpu-tex-enc';
 
 type CompressJpgOptions = Omit<JpegOptions, 'force'>;
 type CompressWebpOptions = Omit<WebpOptions, 'force'>;
 type CompressAvifOptions = Omit<AvifOptions, 'force'>;
 type CompressPngOptions = Omit<PngOptions, 'force'>;
+type CompressGpuOptions = Omit<OutputOptions, 'force'>;
 
 export interface CompressOptions extends PluginOptions
 {
@@ -17,6 +21,7 @@ export interface CompressOptions extends PluginOptions
     webp?: CompressWebpOptions | boolean;
     avif?: CompressAvifOptions | boolean;
     jpg?: CompressJpgOptions | boolean;
+    gpu?: CompressGpuOptions | boolean;
 }
 
 export interface CompressImageData
@@ -33,6 +38,7 @@ export function compress(options: CompressOptions = {}): AssetPipe<CompressOptio
         jpg: true,
         webp: true,
         avif: false,
+        gpu: false,
     });
 
     if (compress)
@@ -49,6 +55,14 @@ export function compress(options: CompressOptions = {}): AssetPipe<CompressOptio
         });
         compress.avif = resolveOptions<CompressAvifOptions>(compress.avif, {
 
+        });
+
+        compress.gpu = resolveOptions<CompressGpuOptions>(compress.gpu, {
+            // ASTC: {
+            //     blocksize: '4x4',
+            //     quality: 'exhaustive'
+            // },
+            BC7: {}
         });
     }
 
@@ -97,7 +111,19 @@ export function compress(options: CompressOptions = {}): AssetPipe<CompressOptio
 
                     return newAsset;
                 });
-
+                // GPU
+                console.error("!!!!!gpu in", cpu.default(), compress.gpu);
+                if (false) {
+                    // const gpu = await generate(asset.path, compress.gpu as CompressGpuOptions);
+                }
+                // if (false) {
+                //     if (checkExt(asset.path, '.png')) {
+                //         console.error("!!!!!gpu NOOOOO");
+                //
+                //         const gpu = await generate(asset.path, "" as CompressGpuOptions);
+                //     }
+                //     // const gpu = await gpuEnc.generate(asset.path, compress.gpu as CompressGpuOptions);
+                // }
                 const promises = processedImages.map((image, i) => image.sharpImage.toBuffer().then((buffer) =>
                 {
                     newAssets[i].buffer = buffer;
